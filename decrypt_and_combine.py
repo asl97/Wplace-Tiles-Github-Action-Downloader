@@ -36,41 +36,47 @@ wait_for_workers()
 groups = set()
 times = set()
 
-dpngs = {}
 for png in pngs:
-    i = png.split("_")[0]
-    if i not in dpngs: dpngs[i] = []
+    part = png.split("_")
+    groups.add(part[0])
+    times.add(part[1])
 
-    dpngs[i].append(png)
+spngs = set(pngs)
 
-if len(dpngs) > 1:
-    png_group = [l for l in zip(*dpngs.values())]
-    for group in png_group:
-        assert group[0].split("_")[-1] == group[1].split("_")[-1]
+times = sorted(times)
+groups = sorted(groups)
 
-    for i, group in enumerate(png_group):
-        # combine image side by side, no config/option to easily set layout yet
-        os.system(f'convert {" ".join(group)} +append {"%05d.png"%i}')
+if len(groups) > 1:
+    for i, time in enumerate(times):
+        # generate a iter of expected file
+        fns = (f'{group}_{time}' for group in groups)
+        # replace non-existing files with placeholder
+        fns = (fn if fn in spngs else "empty_placeholder.png" for fn in fns)
+        jobs.put(f'convert {" ".join(fns)} +append -background white -alpha remove {"%05d.png"%i}')
 else:
-dpngs = {}
-for png in pngs:
-    i = png.split("_")[0]
-    if i not in dpngs: dpngs[i] = []
-
-    dpngs[i].append(png)
-
-if len(dpngs) > 1:
-    png_group = [l for l in zip(*dpngs.values())]
-    for group in png_group:
-        assert group[0].split("_")[-1] == group[1].split("_")[-1]
-
-    for i, group in enumerate(png_group):
-        # combine image side by side, no config/option to easily set layout yet
-        jobs.put(f'convert {" ".join(group)} +append -background white -alpha remove -flatten {"%05d.png"%i}')
-else:
-    for i, png in enumerate(*dpngs.values()):
-        jobs.put(f'convert {png} -background white -alpha remove -flatten {"%05d.png"%i}')
+    for i, png in enumerate(pngs):
+        jobs.put(f'convert {png} -background white -alpha remove {"%05d.png"%i}')
         #os.rename(png, '%05d.png'%i)
+
+# dpngs = {}
+# for png in pngs:
+#     i = png.split("_")[0]
+#     if i not in dpngs: dpngs[i] = []
+
+#     dpngs[i].append(png)
+
+# if len(dpngs) > 1:
+#     png_group = [l for l in zip(*dpngs.values())]
+#     for group in png_group:
+#         assert group[0].split("_")[-1] == group[1].split("_")[-1]
+
+#     for i, group in enumerate(png_group):
+#         # combine image side by side, no config/option to easily set layout yet
+#         jobs.put(f'convert {" ".join(group)} +append -background white -alpha remove -flatten {"%05d.png"%i}')
+# else:
+#     for i, png in enumerate(*dpngs.values()):
+#         jobs.put(f'convert {png} -background white -alpha remove -flatten {"%05d.png"%i}')
+#         #os.rename(png, '%05d.png'%i)
 
 start_worker()
 wait_for_workers()
